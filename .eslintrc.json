@@ -1,0 +1,23 @@
+{
+  "plugins": ["jest", "@typescript-eslint"],
+  "extends": ["plugin:github/recommended"],
+  "parser": "@typescript-eslint/parser",
+  "parserOptions": {
+    "ecmaVersion": 9,
+    "sourceType": "module",
+    "project": "./tsconfig.json"
+  },
+  "rules": {
+    "comma-dangle": "off",
+    "import/no-namespace": "off",
+    "semi": "off",
+    "@typescript-eslint/comma-dangle": ["error", "never"],
+    "@typescript-eslint/no-extra-semi": ["error"],
+    "@typescript-eslint/semi": ["error", "never"]
+  },
+  "env": {
+    "node": true,
+    "es6": true,
+    "jest/globals": true
+  }
+}
