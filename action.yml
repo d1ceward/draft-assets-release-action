@@ -1,6 +1,9 @@
 name: Release Upload
 description: Simple Github action to upload files to the current release
 author: d1ceward
+branding:
+  icon: arrow-up-circle
+  color: black
 inputs:
   token:
     description: Github generated token
