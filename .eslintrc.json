@@ -9,7 +9,9 @@
   },
   "rules": {
     "comma-dangle": "off",
+    "eslint-comments/no-use": "off",
     "import/no-namespace": "off",
+    "i18n-text/no-en": "off",
     "semi": "off",
     "@typescript-eslint/comma-dangle": ["error", "never"],
     "@typescript-eslint/no-extra-semi": ["error"],

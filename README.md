@@ -1,0 +1,43 @@
+# Draft Assets Release Action
+
+Simple Github action to create a draft release with assets on tags push.
+
+## Example workflow
+
+```yml
+name: Draft Assets Release Action
+on:
+  push:
+    tags:
+      - 'v*'
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      # ...
+      - uses: d1ceward/draft-assets-release-action@v1
+        with:
+          name: my-binary
+          path: bin/my-binary
+          token: ${{ secrets.GITHUB_TOKEN }}
+```
+
+## Contributing
+
+Bug reports and pull requests are welcome on GitHub at https://github.com/d1ceward/draft-assets-release-action. By contributing you agree to abide by the Code of Merit.
+
+1. Fork it (<https://github.com/d1ceward/draft-assets-release-action/fork>)
+2. Create your feature branch (`git checkout -b my-new-feature`)
+3. Commit your changes (`git commit -am 'Add some feature'`)
+4. Push to the branch (`git push origin my-new-feature`)
+5. Create a new Pull Request
+
+## Development
+
+1. Install corresponding version of Node.js (cf: `.node-version` file)
+2. Install Yarn package manager with `npm install --global yarn`
+2. Install dependencies with `yarn install`
+
+## Contributors
+
+- [d1ceward](https://github.com/d1ceward) - creator and maintainer

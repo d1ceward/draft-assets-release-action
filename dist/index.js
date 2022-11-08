@@ -38,13 +38,50 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const core = __importStar(__nccwpck_require__(2186));
 const github = __importStar(__nccwpck_require__(5438));
+const fs_1 = __importDefault(__nccwpck_require__(7147));
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            console.log(github.context);
+            const ref = github.context.ref;
+            if (!ref.startsWith('refs/tags/')) {
+                core.warning('Missing tag');
+                return;
+            }
+            const tagName = ref.replace('refs/tags/', '');
+            const targetCommitish = github.context.sha;
+            const inputToken = core.getInput('token', { required: true });
+            const inputName = core.getInput('name', { required: true });
+            const inputPath = core.getInput('path', { required: true });
+            const octokit = github.getOctokit(inputToken);
+            const releases = yield octokit.rest.repos.listReleases({
+                owner: github.context.repo.owner,
+                repo: github.context.repo.repo
+            });
+            if (releases.data.some(release => release.tag_name === tagName)) {
+                core.warning(`Release with tag ${tagName} already exists`);
+                return;
+            }
+            const release = yield octokit.rest.repos.createRelease({
+                owner: github.context.repo.owner,
+                repo: github.context.repo.repo,
+                tag_name: tagName,
+                draft: true,
+                target_commitish: targetCommitish // eslint-disable-line camelcase
+            });
+            const file = fs_1.default.readFileSync(inputPath);
+            octokit.rest.repos.uploadReleaseAsset({
+                owner: github.context.repo.owner,
+                repo: github.context.repo.repo,
+                release_id: release.data.id,
+                name: inputName,
+                data: file
+            });
         }
         catch (error) {
             core.setFailed(error.message);

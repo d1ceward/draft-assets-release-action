@@ -1,0 +1,16 @@
+name: Release Upload
+description: Simple Github action to upload files to the current release
+author: d1ceward
+inputs:
+  token:
+    description: Github generated token
+    required: true
+  name:
+    description: 'Name of the file in the release'
+    required: true
+  path:
+    description: 'Path of the file to upload in the release'
+    required: true
+runs:
+  using: node16
+  main: dist/index.js
