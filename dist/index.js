@@ -44,44 +44,42 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const core = __importStar(__nccwpck_require__(2186));
 const github = __importStar(__nccwpck_require__(5438));
-const fs_1 = __importDefault(__nccwpck_require__(7147));
+// Local imports
+const release_1 = __importDefault(__nccwpck_require__(878));
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            const ref = github.context.ref;
-            if (!ref.startsWith('refs/tags/')) {
-                core.warning('Missing tag');
-                return;
-            }
-            const tagName = ref.replace('refs/tags/', '');
-            const targetCommitish = github.context.sha;
-            const inputToken = core.getInput('token', { required: true });
-            const inputName = core.getInput('name', { required: true });
-            const inputPath = core.getInput('path', { required: true });
-            const octokit = github.getOctokit(inputToken);
+            const files = core.getMultilineInput('files', { required: true });
+            const token = core.getInput('token', { required: true });
+            const octokit = github.getOctokit(token);
+            const releaseTag = (0, release_1.default)();
+            core.debug(`Resolved release tag to ${releaseTag}`);
             const releases = yield octokit.rest.repos.listReleases({
                 owner: github.context.repo.owner,
                 repo: github.context.repo.repo
             });
-            if (releases.data.some(release => release.tag_name === tagName)) {
-                core.warning(`Release with tag ${tagName} already exists`);
-                return;
-            }
-            const release = yield octokit.rest.repos.createRelease({
-                owner: github.context.repo.owner,
-                repo: github.context.repo.repo,
-                tag_name: tagName,
-                draft: true,
-                target_commitish: targetCommitish // eslint-disable-line camelcase
-            });
-            const file = fs_1.default.readFileSync(inputPath);
-            octokit.rest.repos.uploadReleaseAsset({
-                owner: github.context.repo.owner,
-                repo: github.context.repo.repo,
-                release_id: release.data.id,
-                name: inputName,
-                data: file
-            });
+            const release = releases.data.find(item => item.tag_name === releaseTag);
+            // if (release)
+            //   core.debug(`Found release ${release.data.tag_name} with ID ${release.data.id}`)
+            // else {
+            //   release = await octokit.rest.repos.createRelease({
+            //     owner: github.context.repo.owner,
+            //     repo: github.context.repo.repo,
+            //     tag_name: releaseTag, // eslint-disable-line camelcase
+            //     draft: true,
+            //     target_commitish: github.context.sha // eslint-disable-line camelcase
+            //   })
+            //   core.debug(`Created release ${release.data.tag_name} with ID ${release.data.id}`)
+            // }
+            console.log(release);
+            // const file = fs.readFileSync(inputPath) as unknown as string
+            // octokit.rest.repos.uploadReleaseAsset({
+            //   owner: github.context.repo.owner,
+            //   repo: github.context.repo.repo,
+            //   release_id: release.data.id, // eslint-disable-line camelcase
+            //   name: inputName,
+            //   data: file
+            // })
         }
         catch (error) {
             core.setFailed(error.message);
@@ -89,6 +87,27 @@ function run() {
     });
 }
 run();
+
+
+/***/ }),
+
+/***/ 878:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+const github_1 = __nccwpck_require__(5438);
+function getReleaseTag() {
+    const ref = github_1.context.ref;
+    let tag = undefined;
+    if (ref.startsWith('refs/tags/'))
+        tag = ref.replace('refs/tags/', '');
+    if (!tag)
+        throw new Error('No release tag found');
+    return tag;
+}
+exports["default"] = getReleaseTag;
 
 
 /***/ }),
