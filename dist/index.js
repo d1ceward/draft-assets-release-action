@@ -44,44 +44,47 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const core = __importStar(__nccwpck_require__(2186));
 const github = __importStar(__nccwpck_require__(5438));
-const fs_1 = __importDefault(__nccwpck_require__(7147));
+const path_1 = __nccwpck_require__(1017);
+const promises_1 = __nccwpck_require__(3292);
+// Local imports
+const release_1 = __importDefault(__nccwpck_require__(878));
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            const ref = github.context.ref;
-            if (!ref.startsWith('refs/tags/')) {
-                core.warning('Missing tag');
-                return;
-            }
-            const tagName = ref.replace('refs/tags/', '');
-            const targetCommitish = github.context.sha;
-            const inputToken = core.getInput('token', { required: true });
-            const inputName = core.getInput('name', { required: true });
-            const inputPath = core.getInput('path', { required: true });
-            const octokit = github.getOctokit(inputToken);
+            const files = core.getMultilineInput('files', { required: true });
+            const token = core.getInput('token', { required: true });
+            const octokit = github.getOctokit(token);
+            const releaseTag = (0, release_1.default)();
+            core.debug(`Resolved release tag to ${releaseTag}`);
             const releases = yield octokit.rest.repos.listReleases({
                 owner: github.context.repo.owner,
                 repo: github.context.repo.repo
             });
-            if (releases.data.some(release => release.tag_name === tagName)) {
-                core.warning(`Release with tag ${tagName} already exists`);
+            if (releases.data.some(release => release.tag_name === releaseTag)) {
+                core.warning(`Release with tag ${releaseTag} already exists`);
                 return;
             }
             const release = yield octokit.rest.repos.createRelease({
                 owner: github.context.repo.owner,
                 repo: github.context.repo.repo,
-                tag_name: tagName,
+                tag_name: releaseTag,
                 draft: true,
-                target_commitish: targetCommitish // eslint-disable-line camelcase
+                target_commitish: github.context.sha // eslint-disable-line camelcase
             });
-            const file = fs_1.default.readFileSync(inputPath);
-            octokit.rest.repos.uploadReleaseAsset({
-                owner: github.context.repo.owner,
-                repo: github.context.repo.repo,
-                release_id: release.data.id,
-                name: inputName,
-                data: file
-            });
+            yield Promise.all(files.map((file) => __awaiter(this, void 0, void 0, function* () {
+                core.debug(`Reading file ${file}`);
+                const fileName = (0, path_1.basename)(file);
+                const data = yield (0, promises_1.readFile)(file);
+                core.debug(`Uploading file ${fileName} (${data.length} bytes)`);
+                const upload = yield octokit.rest.repos.uploadReleaseAsset({
+                    owner: github.context.repo.owner,
+                    repo: github.context.repo.repo,
+                    release_id: release.data.id,
+                    name: fileName,
+                    data: data
+                });
+                core.info(`Uploaded file ${fileName}, permalink is: ${upload.data.browser_download_url}`);
+            })));
         }
         catch (error) {
             core.setFailed(error.message);
@@ -89,6 +92,27 @@ function run() {
     });
 }
 run();
+
+
+/***/ }),
+
+/***/ 878:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+const github_1 = __nccwpck_require__(5438);
+function getReleaseTag() {
+    const ref = github_1.context.ref;
+    let tag = undefined;
+    if (ref.startsWith('refs/tags/'))
+        tag = ref.replace('refs/tags/', '');
+    if (!tag)
+        throw new Error('No release tag found');
+    return tag;
+}
+exports["default"] = getReleaseTag;
 
 
 /***/ }),
@@ -6115,6 +6139,20 @@ const isDomainOrSubdomain = function isDomainOrSubdomain(destination, original) 
 };
 
 /**
+ * isSameProtocol reports whether the two provided URLs use the same protocol.
+ *
+ * Both domains must already be in canonical form.
+ * @param {string|URL} original
+ * @param {string|URL} destination
+ */
+const isSameProtocol = function isSameProtocol(destination, original) {
+	const orig = new URL$1(original).protocol;
+	const dest = new URL$1(destination).protocol;
+
+	return orig === dest;
+};
+
+/**
  * Fetch function
  *
  * @param   Mixed    url   Absolute url or Request instance
@@ -6145,7 +6183,7 @@ function fetch(url, opts) {
 			let error = new AbortError('The user aborted a request.');
 			reject(error);
 			if (request.body && request.body instanceof Stream.Readable) {
-				request.body.destroy(error);
+				destroyStream(request.body, error);
 			}
 			if (!response || !response.body) return;
 			response.body.emit('error', error);
@@ -6186,8 +6224,40 @@ function fetch(url, opts) {
 
 		req.on('error', function (err) {
 			reject(new FetchError(`request to ${request.url} failed, reason: ${err.message}`, 'system', err));
+
+			if (response && response.body) {
+				destroyStream(response.body, err);
+			}
+
 			finalize();
 		});
+
+		fixResponseChunkedTransferBadEnding(req, function (err) {
+			if (signal && signal.aborted) {
+				return;
+			}
+
+			destroyStream(response.body, err);
+		});
+
+		/* c8 ignore next 18 */
+		if (parseInt(process.version.substring(1)) < 14) {
+			// Before Node.js 14, pipeline() does not fully support async iterators and does not always
+			// properly handle when the socket close/end events are out of order.
+			req.on('socket', function (s) {
+				s.addListener('close', function (hadError) {
+					// if a data listener is still present we didn't end cleanly
+					const hasDataListener = s.listenerCount('data') > 0;
+
+					// if end happened before close but the socket didn't emit an error, do it now
+					if (response && hasDataListener && !hadError && !(signal && signal.aborted)) {
+						const err = new Error('Premature close');
+						err.code = 'ERR_STREAM_PREMATURE_CLOSE';
+						response.body.emit('error', err);
+					}
+				});
+			});
+		}
 
 		req.on('response', function (res) {
 			clearTimeout(reqTimeout);
@@ -6260,7 +6330,7 @@ function fetch(url, opts) {
 							size: request.size
 						};
 
-						if (!isDomainOrSubdomain(request.url, locationURL)) {
+						if (!isDomainOrSubdomain(request.url, locationURL) || !isSameProtocol(request.url, locationURL)) {
 							for (const name of ['authorization', 'www-authenticate', 'cookie', 'cookie2']) {
 								requestOpts.headers.delete(name);
 							}
@@ -6353,6 +6423,13 @@ function fetch(url, opts) {
 					response = new Response(body, response_options);
 					resolve(response);
 				});
+				raw.on('end', function () {
+					// some old IIS servers return zero-length OK deflate responses, so 'data' is never emitted.
+					if (!response) {
+						response = new Response(body, response_options);
+						resolve(response);
+					}
+				});
 				return;
 			}
 
@@ -6372,6 +6449,41 @@ function fetch(url, opts) {
 		writeToStream(req, request);
 	});
 }
+function fixResponseChunkedTransferBadEnding(request, errorCallback) {
+	let socket;
+
+	request.on('socket', function (s) {
+		socket = s;
+	});
+
+	request.on('response', function (response) {
+		const headers = response.headers;
+
+		if (headers['transfer-encoding'] === 'chunked' && !headers['content-length']) {
+			response.once('close', function (hadError) {
+				// if a data listener is still present we didn't end cleanly
+				const hasDataListener = socket.listenerCount('data') > 0;
+
+				if (hasDataListener && !hadError) {
+					const err = new Error('Premature close');
+					err.code = 'ERR_STREAM_PREMATURE_CLOSE';
+					errorCallback(err);
+				}
+			});
+		}
+	});
+}
+
+function destroyStream(stream, err) {
+	if (stream.destroy) {
+		stream.destroy(err);
+	} else {
+		// node < 8
+		stream.emit('error', err);
+		stream.end();
+	}
+}
+
 /**
  * Redirect code matching
  *
@@ -9636,6 +9748,14 @@ module.exports = require("events");
 
 "use strict";
 module.exports = require("fs");
+
+/***/ }),
+
+/***/ 3292:
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("fs/promises");
 
 /***/ }),
 

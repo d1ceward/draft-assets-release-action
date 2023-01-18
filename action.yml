@@ -6,14 +6,24 @@ branding:
   color: black
 inputs:
   token:
-    description: Github generated token
     required: true
-  name:
-    description: 'Name of the file in the release'
+    description: |
+      The GitHub access token which will be used to upload release artifacts.
+
+      Usually this will be `secrets.GITHUB_TOKEN`.
+  files:
     required: true
-  path:
-    description: 'Path of the file to upload in the release'
-    required: true
+    description: |
+      A list of files to publish, relative to the repository root.
+
+      The files must be specified as a newline-delimited list of paths.
+
+      ```yaml
+      with:
+        files: |
+          bin/release-linux
+          bin/release-windows
+      ```
 runs:
   using: node16
   main: dist/index.js
