@@ -15,11 +15,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       # ...
-      - uses: d1ceward/draft-assets-release-action@v1
+      - uses: d1ceward/draft-assets-release-action@v2
         with:
-          name: my-binary
-          path: bin/my-binary
           token: ${{ secrets.GITHUB_TOKEN }}
+          files: |
+            bin/my-first-binary
+            bin/my-second-binary
 ```
 
 ## Contributing
