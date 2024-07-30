@@ -6,7 +6,7 @@ import { readFile } from 'fs/promises'
 // Local imports
 import getReleaseTag from './release'
 
-async function run(): Promise<void> {
+const run = async(): Promise<void> => {
   try {
     const files = core.getMultilineInput('files', { required: true })
 
@@ -21,16 +21,16 @@ async function run(): Promise<void> {
       repo: github.context.repo.repo
     })
 
-    if (releases.data.some(release => release.tag_name === releaseTag)) {
+    if (releases.data.some((release: { readonly tag_name: string }) => release.tag_name === releaseTag)) {
       core.warning(`Release with tag ${releaseTag} already exists`)
       return
     }
 
     const release = await octokit.rest.repos.createRelease({
+      draft: true,
       owner: github.context.repo.owner,
       repo: github.context.repo.repo,
       tag_name: releaseTag, // eslint-disable-line camelcase
-      draft: true,
       target_commitish: github.context.sha // eslint-disable-line camelcase
     })
 
@@ -43,19 +43,22 @@ async function run(): Promise<void> {
 
         core.debug(`Uploading file ${fileName} (${data.length} bytes)`)
         const upload = await octokit.rest.repos.uploadReleaseAsset({
-          owner: github.context.repo.owner,
-          repo: github.context.repo.repo,
-          release_id: release.data.id, // eslint-disable-line camelcase
+          data: data as unknown as string,
           name: fileName,
-          data: data as unknown as string
+          owner: github.context.repo.owner,
+          release_id: release.data.id, // eslint-disable-line camelcase
+          repo: github.context.repo.repo
         })
 
         core.info(`Uploaded file ${fileName}, permalink is: ${upload.data.browser_download_url}`)
       })
     )
-  } catch (error: any) {
-    core.setFailed(error.message)
+  } catch (error: unknown) {
+    if (error instanceof Error)
+      core.setFailed(error.message)
+    else
+      core.setFailed('Unknown error')
   }
 }
 
-run()
+run() // eslint-disable-line @typescript-eslint/no-floating-promises
