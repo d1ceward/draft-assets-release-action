@@ -36,8 +36,8 @@ Bug reports and pull requests are welcome on GitHub at https://github.com/d1cewa
 ## Development
 
 1. Install corresponding version of Node.js (cf: `.node-version` file)
-2. Install Yarn package manager with `npm install --global yarn`
-2. Install dependencies with `yarn install`
+2. Install pnpm package manager with `corepack enable pnpm`
+2. Install dependencies with `pnpm install`
 
 ## Contributors
 
