@@ -1,11 +1,11 @@
-# Draft Assets Release Action
+# Release Upload
 
 Simple Github action to create a draft release with assets on tags push.
 
 ## Example workflow
 
 ```yml
-name: Draft Assets Release Action
+name: Release Upload Action
 on:
   push:
     tags:
