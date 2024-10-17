@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       # ...
-      - uses: d1ceward/release-upload-action@v2
+      - uses: d1ceward/release-upload-action@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           files: |
