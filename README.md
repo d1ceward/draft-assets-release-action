@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       # ...
-      - uses: d1ceward/draft-assets-release-action@v2
+      - uses: d1ceward/release-upload-action@v2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           files: |
@@ -25,9 +25,9 @@ jobs:
 
 ## Contributing
 
-Bug reports and pull requests are welcome on GitHub at https://github.com/d1ceward/draft-assets-release-action. By contributing you agree to abide by the Code of Merit.
+Bug reports and pull requests are welcome on GitHub at https://github.com/d1ceward/release-upload-action. By contributing you agree to abide by the Code of Merit.
 
-1. Fork it (<https://github.com/d1ceward/draft-assets-release-action/fork>)
+1. Fork it (<https://github.com/d1ceward/release-upload-action/fork>)
 2. Create your feature branch (`git checkout -b my-new-feature`)
 3. Commit your changes (`git commit -am 'Add some feature'`)
 4. Push to the branch (`git push origin my-new-feature`)
